@@ -1,0 +1,6 @@
+fastapi/MOOEasyTool
+fastapi/alembic/versions/*
+*/__pycache__
+fastapi/experiments
+
+*.db
