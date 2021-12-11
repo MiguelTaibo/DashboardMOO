@@ -1,0 +1,3 @@
+[submodule "fastapi/MOOEasyTool"]
+	path = fastapi/MOOEasyTool
+	url = https://github.com/MiguelTaibo/MOOEasyTool.git

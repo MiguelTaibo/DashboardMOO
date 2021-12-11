@@ -20,7 +20,7 @@ cur_path = os.getcwd()
 sys.path.append(cur_path[0:cur_path.rfind("/")])
 
 from db_session import Base
-from models import *
+from dbModels import *
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 

@@ -1,59 +1,94 @@
 from sqlalchemy.orm import Session
+from MOOEasyTool.models.GaussianProcess import GaussianProcess
+from MOOEasyTool.acquisition_functions.MESMO import mesmo_acq
+from MOOEasyTool.acquisition_functions.MES import mes_acq, basic_mes_acq
+import gpflow
 
 from fastapi import HTTPException
 import numpy as np
 import os
 
 from schemas import InputExperiment, OutputExperiment, OutputSamples, Sample
-from models import *
+from dbModels import *
+
+def getAcqfunctions(db: Session):
+    import pdb
+    # pdb.set_trace()
+    from MOOEasyTool.acquisition_functions.MES import mes_acq_hp, basic_mes_acq_hp
+    from MOOEasyTool.acquisition_functions.MESMO import mesmo_acq_hp
+    # pdb.set_trace()
+
+
+    return {"acqfunctions": [mes_acq_hp, basic_mes_acq_hp, mesmo_acq_hp]}
 
 def startTest(experiment: InputExperiment, db: Session):
+    if hasattr(experiment,'name') and db.query(Test).filter(Test.name==experiment.name).first is not None:
+        raise HTTPException(status_code=404, detail="Experiment with name '"+experiment.name+"' already exits.")
 
     if experiment.n_ins!=len(experiment.input_names):
-        raise HTTPException(status_code=404, detail="Input names has different length that number of inputs")
+        raise HTTPException(status_code=404, detail="Input names has different length that number of inputs.")
     if experiment.n_objs!=len(experiment.objective_names):
-        raise HTTPException(status_code=404, detail="Objectives names has different length that number of objectives")
+        raise HTTPException(status_code=404, detail="Objectives names has different length that number of objectives.")
 
-    kernel = db.query(Kernel).filter(Kernel.name==experiment.kernel).first()
-    acq = db.query(AcqFunction).filter(AcqFunction.name ==experiment.acq_funct).first()
-
-    new_exp = Test(n_ins = experiment.n_ins,
+    new_exp = Test(
+        n_ins = experiment.n_ins,
         n_objs = experiment.n_objs,
         n_cons = experiment.n_cons,
-        kernel_id = kernel.id,
-        acq_id = acq.id)
+        kernel_id = 1,
+        acq_id = experiment.acq_id
+    )
+    
     if hasattr(experiment,'name'):
         new_exp.name = experiment.name
+
+    ## ACQ hyperparameters
+    for k,v in experiment.acqfunct_hps.items():
+        if k=="M":
+            new_exp.acq_M = v
+        if k=="N":
+            new_exp.acq_N = v
+
 
     db.add(new_exp)
     db.commit()
     db.refresh(new_exp)
 
-    for name in experiment.input_names:
-        input_db = Input(name=name, test_id=new_exp.id)
+    for name, mm in zip(experiment.input_names, experiment.input_mms):
+        input_db = Input(name=name, test_id=new_exp.id, lowerBound=mm[0], upperBound=mm[1])
         db.add(input_db)
-    for name in experiment.objective_names:
-        output_db = Output(name=name, test_id=new_exp.id)
+    for name, mm in zip(experiment.objective_names, experiment.objective_mms):
+        output_db = Output(name=name, test_id=new_exp.id, maximize=mm)
         db.add(output_db)
 
     db.commit()
 
     return OutputExperiment(
-        name = name,
+        id = new_exp.id,
+        name = new_exp.name,
         n_ins = new_exp.n_ins,
         input_names = experiment.input_names,
+        input_mms = experiment.input_mms,
         n_objs = new_exp.n_objs,
         objective_names = experiment.objective_names,
+        objective_mms = experiment.objective_mms,
         n_cons = new_exp.n_cons,
         Kernel = new_exp.kernel_id,
-        acq_funct = new_exp.acq_id
+        acq_id = new_exp.acq_id,
+        acqfunct_hps = experiment.acqfunct_hps
     )
 
 def loadTest(name:str, db: Session):
 
     test = db.query(Test).filter(Test.name==name).first()
     if test is None:
-        raise HTTPException(status_code=404, detail="Experiment not found")
+        raise HTTPException(status_code=404, detail="Experiment '"+name+"' not found")
+
+    ## acq hyperparameters
+    acqfunct_hps = dict()
+    if test.acq_N is not None:
+        acqfunct_hps['N'] = test.acq_N
+    if test.acq_M is not None:
+        acqfunct_hps['M'] = test.acq_M
 
     inputs_db = db.query(Input).filter(Input.test_id==test.id).all()
     outputs_db = db.query(Output).filter(Output.test_id==test.id).all()
@@ -78,9 +113,14 @@ def loadTest(name:str, db: Session):
         name = name,
         n_ins = test.n_ins,
         input_names = [el.name for el in inputs_db],
+        input_mms = [[el.lowerBound, el.upperBound] for el in inputs_db],
         n_objs = test.n_objs,
         objective_names = [el.name for el in outputs_db],
+        objective_mms = [el.maximize for el in outputs_db],
+
         n_cons = test.n_cons,
+        acq_id = test.acq_id,
+        acqfunct_hps = acqfunct_hps,
         X = None if X is None else X.tolist(),
         Y = None if Y is None else Y.tolist(),
         next_x = None if next_x is None else next_x.tolist()
@@ -98,12 +138,38 @@ def getRandomSample(testid:int,  db: Session):
 def getNextSample(testid:int,  db: Session):
     test = db.query(Test).filter(Test.id==testid).first()
     
+    inputs = db.query(Input).filter(Input.test_id==test.id).all()
+
+    # import pdb
+    # pdb.set_trace()
+
+    lowerBounds,upperBounds = [],[]
+    for i in inputs:
+        lowerBounds.append(i.lowerBound)
+        upperBounds.append(i.upperBound)
+
+    try:
+        X = np.load("experiments/"+str(testid)+"X.npy")
+    except:
+        X = np.array([])
+
+    try:
+        Y = np.load("experiments/"+str(testid)+"Y.npy")
+    except:
+        Y = np.array(np.array([]))
+
+    ## Todo implement kernel options and hyperparameters
+    kernel = gpflow.kernels.SquaredExponential()
+    GP = GaussianProcess(test.n_objs, test.n_cons, test.n_ins, lowerBounds, upperBounds, kernel, X = X, Y = Y, noise_variance=2e-6)
+    GP.updateGPR()
+    GP.optimizeKernel()
+
+    x_best, _ = id_to_acqfunct(test.acq_id)(GP, N=test.acq_N, M=test.acq_M)
+
     test_file = "experiments/"+str(testid)+"Xnext.npy"
-    x = np.random.uniform(0,1,test.n_ins)
-    np.save(test_file, x)
+    np.save(test_file, x_best)
 
-    return {"next_x": x.tolist()}
-
+    return {"next_x": x_best.tolist()}
 
 def setSample(testid:int,sample: Sample, db: Session):
     
@@ -121,7 +187,22 @@ def setSample(testid:int,sample: Sample, db: Session):
         Y = np.array(np.array([sample.y]))
     np.save("experiments/"+str(testid)+"Y.npy", Y)
 
-    os.remove("experiments/"+str(testid)+"Xnext.npy")
-
+    try:
+        os.remove("experiments/"+str(testid)+"Xnext.npy")
+    except:
+        pass
     return OutputSamples(X=X.tolist(), Y=Y.tolist())
     
+
+###### Auxiliar functions
+
+def id_to_acqfunct(id):
+    if (id==1):
+        print("basic mes acq")
+        return basic_mes_acq
+    if (id==2):
+        print("mes acq")
+        return mes_acq
+    if (id==3):
+        print("mesmo acq")
+        return mesmo_acq
