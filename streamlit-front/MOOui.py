@@ -1,3 +1,4 @@
+import gpflow
 import streamlit as st
 import numpy as np
 
@@ -5,6 +6,7 @@ from back_connection import drawNextSample, getAcqfunctions, sendSample, startEx
 from htmlComponent import disableWidget
 
 from frontutils import filterdict
+from frontGP import frontGP
 
 #Temporal
 k_hps = ["Lengthscales", "Variance", "Noise Variance"]
@@ -21,6 +23,11 @@ if 'selected' not in st.session_state:
 
 if 'input_error' not in st.session_state:
 	st.session_state.input_error = False
+
+if 'X' not in st.session_state:
+    st.session_state.X = []
+if 'Y' not in st.session_state:
+    st.session_state.Y = []
 
 if 'n_ins' not in st.session_state:
     st.session_state.n_ins=1
@@ -92,7 +99,7 @@ with st.container():
             st.session_state.acqfunct_hps = dict()
 
         for hp in filterdict(st.session_state.acqfunctions,"name",st.session_state.acqfunct)[0]['hps']:
-            st.session_state.acqfunct_hps[hp['name']] = expander.number_input(hp['name'], value=hp['default'], help=hp['help'], format=hp['type'])
+            st.session_state.acqfunct_hps[hp['name']] = expander.number_input(hp['name'], value=hp['default'], help=hp['help'], format=hp['type'], min_value=0)
     else:
         c1.markdown(disableWidget("N inputs",st.session_state.n_ins), unsafe_allow_html=True)
         expander = c1.expander("Input variables")
@@ -165,8 +172,55 @@ with st.container():
 with st.container():
     st.header("Graphs")
 
-### Debug section
-with st.container():
-    st.write(st.session_state)
-    st.subheader("All to do, although, as this is python we can use pyplot as in the original code :)")
-    st.subheader("Nevertheless, the computations are supposed to be done in the back-end, so we do not have them here")
+    if st.session_state.X is None or st.session_state.X == []:
+        st.subheader("Get at least one sample to visualize graphs")
+    else:
+        kernel = gpflow.kernels.SquaredExponential()
+        GP = frontGP(
+            st.session_state.n_objs,
+            st.session_state.n_cons,
+            st.session_state.n_ins,
+            np.array(st.session_state.input_mms)[:,0],
+            np.array(st.session_state.input_mms)[:,1],
+            kernel = kernel,
+            X = np.array(st.session_state.X),
+            Y = np.array(st.session_state.Y))
+        GP.updateGPR()
+        GP.optimizeKernel()
+        
+
+        c1,_,c2,_ = st.columns([1,1,1,4])
+        graph_select = c1.select_slider('', options=["GP model", "Pareto sets"], key="graph selector")
+        c2.download_button(
+            label="Download Paretos CSV",
+            data=GP.dlParetos(st.session_state),
+            file_name=st.session_state.name+'_paretos.csv',
+            mime='text/csv',
+        )
+
+        if graph_select=="GP model":
+            fig, axs = GP.plot()
+            for i in range(GP.O):
+                axs[i,0].set_ylabel(st.session_state.objective_names[i])
+            for i in range(GP.d):
+                axs[GP.O-1,i].set_xlabel(st.session_state.input_names[i])
+
+            c1,c2,c3 = st.columns([1,2*GP.d,1])
+
+            c2.pyplot(fig)
+        elif graph_select=="Pareto sets":
+
+            c1,c2,c3,c4,c5 = st.columns([2,3,2,3,2])
+            
+            c2.header("Pareto Set")
+            c4.header("Pareto Front")
+            c4.selectbox("X axis", options = st.session_state.objective_names, index=0, key="frontx")
+            c4.selectbox("Y axis", options = st.session_state.objective_names, index=1, key = "fronty")
+            c2.selectbox("X axis", options = st.session_state.input_names, index=0, key="setx")
+            c2.selectbox("Y axis", options = st.session_state.input_names, index=1, key="sety")
+            
+
+            fig1, fig2 = GP.plotParetos(st.session_state)
+            c1,c2,c3,c4 = st.columns([2,4,4,2])
+            c2.pyplot(fig1)
+            c3.pyplot(fig2)

@@ -53,6 +53,7 @@ def startExperiment(state):
 
 def loadExperiment(state):
     response = requests.get(backend+"loadexp/"+state.name)
+    state.input_error = False
 
     if response.status_code!=200:
         state.input_error = True

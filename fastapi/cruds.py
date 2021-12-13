@@ -22,7 +22,7 @@ def getAcqfunctions(db: Session):
     return {"acqfunctions": [mes_acq_hp, basic_mes_acq_hp, mesmo_acq_hp]}
 
 def startTest(experiment: InputExperiment, db: Session):
-    if hasattr(experiment,'name') and db.query(Test).filter(Test.name==experiment.name).first is not None:
+    if hasattr(experiment,'name') and db.query(Test).filter(Test.name==experiment.name).first() is not None:
         raise HTTPException(status_code=404, detail="Experiment with name '"+experiment.name+"' already exits.")
 
     if experiment.n_ins!=len(experiment.input_names):
@@ -139,24 +139,23 @@ def getNextSample(testid:int,  db: Session):
     test = db.query(Test).filter(Test.id==testid).first()
     
     inputs = db.query(Input).filter(Input.test_id==test.id).all()
-
-    # import pdb
-    # pdb.set_trace()
-
     lowerBounds,upperBounds = [],[]
     for i in inputs:
         lowerBounds.append(i.lowerBound)
         upperBounds.append(i.upperBound)
-
     try:
         X = np.load("experiments/"+str(testid)+"X.npy")
     except:
         X = np.array([])
 
+    outputs = db.query(Output).filter(Output.test_id==test.id).all()
     try:
         Y = np.load("experiments/"+str(testid)+"Y.npy")
     except:
         Y = np.array(np.array([]))
+    for o in outputs:
+        if (o.maximize):
+            Y[:,o] = - Y[:,o]
 
     ## Todo implement kernel options and hyperparameters
     kernel = gpflow.kernels.SquaredExponential()
