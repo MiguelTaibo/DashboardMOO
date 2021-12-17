@@ -4,6 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+from sqlalchemy import create_engine
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -24,6 +25,26 @@ from dbModels import *
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
+
+
+def get_url():
+    user_name = os.getenv("SQL_USER", "root")
+    password = os.getenv("SQL_PASSWORD", "root")
+    host = os.getenv("SQL_HOST", "db")
+    database_name = os.getenv("SQL_DATABASE", "MOOdb")
+
+    # user_name = "thewiseseeker"
+    # password = "fyqxM26IIyhdqlaB"
+    # host = "127.0.0.1:3307"
+    # database_name = "master"
+
+    return 'mysql://%s:%s@%s/%s' % (
+        user_name,
+        password,
+        host,
+        database_name,
+    )
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
@@ -42,7 +63,7 @@ def run_migrations_offline():
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -61,12 +82,12 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+    print(get_url())
+    connectable = create_engine(
+        get_url(),
+        echo=False,
+        pool_recycle=3600
     )
-
     with connectable.connect() as connection:
         context.configure(
             connection=connection, target_metadata=target_metadata

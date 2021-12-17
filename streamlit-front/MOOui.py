@@ -8,6 +8,8 @@ from htmlComponent import disableWidget
 from frontutils import filterdict
 from frontGP import frontGP
 
+import os
+
 #Temporal
 k_hps = ["Lengthscales", "Variance", "Noise Variance"]
 

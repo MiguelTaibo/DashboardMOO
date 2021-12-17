@@ -1,14 +1,37 @@
 version: '3'
 
 services:
+  db:
+    container_name: "db"
+    build: ./mysql
+    restart: always
+    tty: true
+    environment:
+      MYSQL_DATABASE: MOOdb
+      MYSQL_USER: miguel
+      MYSQL_PASSWORD: pass
+      MYSQL_ROOT_PASSWORD: pass 
+    ports:
+      - "3307:3306"
+    networks:
+      - deploy_network
   fastapi:
+    depends_on:
+      - db
     build: fastapi/
+    networks:
+      - deploy_network
     ports: 
       - 8001:8001
+    depends_on:
+      - db
     container_name: MOOback
-
+    env_file:
+      - back.env
   streamlit:
     build: streamlit-front/
+    networks:
+      - deploy_network
     depends_on:
       - fastapi
     ports: 
@@ -16,6 +39,7 @@ services:
     container_name: MOOfront
     env_file:
       - front.env
+
 networks:
   deploy_network:
     driver: bridge
