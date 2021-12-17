@@ -16,7 +16,6 @@ st.set_page_config(page_title="MOO Easy Tool", page_icon=None, layout="wide", in
 if 'acqfunctions' not in st.session_state:
     getAcqfunctions(st.session_state)
 
-
 ### Initialization of the state
 if 'selected' not in st.session_state:
 	st.session_state.selected = False
@@ -33,6 +32,8 @@ if 'n_ins' not in st.session_state:
     st.session_state.n_ins=1
 
 st.title("MOO Easy Tool")
+
+st.write("Want to automate your multi objective optimization procedure? Check [our API]("+os.getenv('backend', "http://0.0.0.0:8001/")+"docs)")
 
 ### Name section
 c1,bt_load_exp,bt_start_test,c4 = st.columns([2,1,1,2])
@@ -97,9 +98,9 @@ with st.container():
         expander = c5.expander("Acquisitiion function hyperparameters")
         if 'acqfunct_hps' not in st.session_state:
             st.session_state.acqfunct_hps = dict()
-
-        for hp in filterdict(st.session_state.acqfunctions,"name",st.session_state.acqfunct)[0]['hps']:
-            st.session_state.acqfunct_hps[hp['name']] = expander.number_input(hp['name'], value=hp['default'], help=hp['help'], format=hp['type'], min_value=0)
+        if not st.session_state.acqfunctions==[]:
+            for hp in filterdict(st.session_state.acqfunctions,"name",st.session_state.acqfunct)[0]['hps']:
+                st.session_state.acqfunct_hps[hp['name']] = expander.number_input(hp['name'], value=hp['default'], help=hp['help'], format=hp['type'], min_value=0)
     else:
         c1.markdown(disableWidget("N inputs",st.session_state.n_ins), unsafe_allow_html=True)
         expander = c1.expander("Input variables")

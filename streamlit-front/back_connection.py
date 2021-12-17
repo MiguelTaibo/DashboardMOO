@@ -1,13 +1,12 @@
-import pandas as pd
-from pydantic.types import Json
 import requests
+import os
 
 from frontutils import filterdict
 
-backend = "http://localhost:8000/"
+backend = os.getenv('backend', "http://localhost:8001/")
 
 def getAcqfunctions(state):
-    response = requests.get(backend+'acqfunctions')
+    response = requests.get(backend+'acqfunctions', verify=False)
 
     if response.status_code!=200:
         state.input_error = True

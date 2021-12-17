@@ -1,5 +1,7 @@
 fastapi/alembic/versions/*
 */__pycache__
 fastapi/experiments
+front.env
+back.env
 
 *.db

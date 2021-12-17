@@ -2,7 +2,6 @@ import sys, os
 cur_path = os.getcwd()
 sys.path.append(cur_path+"/MOOEasyTool")
 
-from fastapi import File
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
 from fastapi import Depends
@@ -11,7 +10,6 @@ from db_session import get_db
 from dbModels import Test
 from schemas import AcqsOut, InputExperiment, OutputExperiment, OutputSamples, Sample, XSample
 from cruds import getAcqfunctions, getNextSample, setSample, startTest, loadTest, getRandomSample
-
 
 app = FastAPI()
 
