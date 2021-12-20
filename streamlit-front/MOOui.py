@@ -35,7 +35,7 @@ if 'n_ins' not in st.session_state:
 
 st.title("MOO Easy Tool")
 
-st.write("Want to automate your multi objective optimization procedure? Check [our API]("+os.getenv('backend', "http://0.0.0.0:8003/")+"docs)")
+st.write("Want to automate your multi objective optimization procedure? Check [our API]("+os.getenv('backendURL', "http://0.0.0.0:8003/")+"docs)")
 
 ### Name section
 c1,bt_load_exp,bt_start_test,c4 = st.columns([2,1,1,2])

@@ -3,7 +3,7 @@ import os
 
 from frontutils import filterdict
 
-backend = os.getenv('backend', "http://localhost:8003/")
+backend = os.getenv('backend', "http://localhost:8003/api")
 
 def getAcqfunctions(state):
     response = requests.get(backend+'acqfunctions', verify=False)
