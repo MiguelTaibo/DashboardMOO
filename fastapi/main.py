@@ -48,8 +48,7 @@ async def get_random_sample(testid:int,  db: Session = Depends(get_db)):
 @app.get("/getsample/next/{testid}", response_model=XSample)
 async def get_next_sample(testid:int,  db: Session = Depends(get_db)):
     """
-    Get next value for the next input variables to try using 
-    experiments hyperparameters
+    Get next value for the next input variables to try using experiments hyperparameters
     """
     return getNextSample(testid, db)
 

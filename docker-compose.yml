@@ -23,8 +23,6 @@ services:
       - deploy_network
     ports: 
       - 8003:8003
-    depends_on:
-      - db
     container_name: MOOback
     env_file:
       - back.env
