@@ -1,17 +1,9 @@
 FROM python:3.7-slim
 
-RUN mkdir /streamlit-front
-
 RUN mkdir -p /root/.streamlit
-RUN bash -c 'echo -e "\
-[server]\n\
-port=8501\n\
-headless=true\n\
-[browser]\n\
-serverAddress=localhost\n\
-serverPort=8501\n\
-" > /root/.streamlit/config.toml'
+COPY config.toml /root/.streamlit
 
+RUN mkdir /streamlit-front
 COPY requirements.txt /streamlit-front
 
 WORKDIR /streamlit-front
