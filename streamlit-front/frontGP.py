@@ -57,7 +57,9 @@ class frontGP(object):
 
         if self.d >1:
             for j in range(self.d):
-                grid = np.zeros((10_000,self.d))
+                grid = np.ones((10_000,self.d))
+                for k in range(self.d):
+                    grid[:,k]=grid[:,k]*(self.upperBounds[k]+self.lowerBounds[k])/2
                 xx = np.linspace(self.lowerBounds[j], self.upperBounds[j], 10_000).reshape(10_000, 1)
                 grid[:,j]=xx[:,0]
                 mean, var = self.GPR.predict_y(grid)

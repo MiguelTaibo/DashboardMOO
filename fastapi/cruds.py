@@ -153,9 +153,9 @@ def getNextSample(testid:int,  db: Session):
         Y = np.load("experiments/"+str(testid)+"Y.npy")
     except:
         Y = np.array(np.array([]))
-    for o in outputs:
+    for idx,o in enumerate(outputs):
         if (o.maximize):
-            Y[:,o] = - Y[:,o]
+            Y[:,idx] = - Y[:,idx]
 
     ## Todo implement kernel options and hyperparameters
     kernel = gpflow.kernels.SquaredExponential()
