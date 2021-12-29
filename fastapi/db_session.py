@@ -4,9 +4,9 @@ from sqlalchemy.orm import sessionmaker
 
 import os
 
-user_name = os.environ.get("SQL_USER", "miguel")
-password = os.environ.get("SQL_PASSWORD", "pass")
-host = os.environ.get("SQL_HOST", "db")
+user_name = os.environ.get("SQL_USER", "root")
+password = os.environ.get("SQL_PASSWORD", "root")
+host = os.environ.get("SQL_HOST", "0.0.0.0:3307")
 database_name = os.environ.get("SQL_DATABASE", "MOOdb")
 
 
@@ -19,10 +19,8 @@ DATABASE = 'mysql://%s:%s@%s/%s' % (
 
 print(DATABASE)
 
-SQLALCHEMY_DATABASE_URL = "mysql://root@127.0.0.1:3306/TFM-pruebas"
-
 engine = create_engine(
-    DATABASE, pool_recycle=3306
+    DATABASE, pool_recycle=3307
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

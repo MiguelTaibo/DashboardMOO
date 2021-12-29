@@ -64,31 +64,40 @@ class frontGP(object):
                 grid[:,j]=xx[:,0]
                 mean, var = self.GPR.predict_y(grid)
 
-                (a_min,b_min) = (1e10, -1e10)
-                for i in range(self.O):
-                    axs[i, j].plot(self.X[:,j], self.Y[:,i], 'kx', mew=2)
-                    axs[i, j].plot(grid[:,j], mean[:,i], 'C0', lw=2)
-                    axs[i, j].fill_between(grid[:,j],
-                                    mean[:,i] - 2*np.sqrt(var[:,i]),
-                                    mean[:,i] + 2*np.sqrt(var[:,i]),
+                if self.O==1:
+                    axs[j].plot(self.X[:,j], self.Y[:,0], 'kx', mew=2)
+                    axs[j].plot(grid[:,j], mean[:,0], 'C0', lw=2)
+                    axs[j].fill_between(grid[:,j],
+                                    mean[:,0] - 2*np.sqrt(var[:,0]),
+                                    mean[:,0] + 2*np.sqrt(var[:,0]),
                                     color='C0', alpha=0.2)
+                else:
+                    for i in range(self.O):
+                        axs[i, j].plot(self.X[:,j], self.Y[:,i], 'kx', mew=2)
+                        axs[i, j].plot(grid[:,j], mean[:,i], 'C0', lw=2)
+                        axs[i, j].fill_between(grid[:,j],
+                                        mean[:,i] - 2*np.sqrt(var[:,i]),
+                                        mean[:,i] + 2*np.sqrt(var[:,i]),
+                                        color='C0', alpha=0.2)
 
-                    (a,b) = axs[i, j].get_ylim()
-                    a_min = min(a,a_min)
-                    b_min = max(b,b_min)
-
-                for i in range(self.O):
-                    axs[i, j].set_ylim(a_min, b_min)
         else:
             xx = np.linspace(self.lowerBounds[0], self.upperBounds[0], 10_000).reshape(10_000, 1)
             mean, var = self.GPR.predict_y(xx)
-            for i in range(self.O):
-                axs[i].plot(self.X, self.Y[:,i], 'kx', mew=2)
-                axs[i].plot(xx[:,0], mean[:,i], 'C0', lw=2)
-                axs[i].fill_between(xx[:,0],
-                                mean[:,i] - 2*np.sqrt(var[:,i]),
-                                mean[:,i] + 2*np.sqrt(var[:,i]),
+            if self.O==1:
+                axs.plot(self.X, self.Y[:,0], 'kx', mew=2)
+                axs.plot(xx[:,0], mean[:,0], 'C0', lw=2)
+                axs.fill_between(xx[:,0],
+                                mean[:,0] - 2*np.sqrt(var[:,0]),
+                                mean[:,0] + 2*np.sqrt(var[:,0]),
                                 color='C0', alpha=0.2)
+            else:
+                for i in range(self.O):
+                    axs[i].plot(self.X, self.Y[:,i], 'kx', mew=2)
+                    axs[i].plot(xx[:,0], mean[:,i], 'C0', lw=2)
+                    axs[i].fill_between(xx[:,0],
+                                    mean[:,i] - 2*np.sqrt(var[:,i]),
+                                    mean[:,i] + 2*np.sqrt(var[:,i]),
+                                    color='C0', alpha=0.2)
 
         return fig, axs
 

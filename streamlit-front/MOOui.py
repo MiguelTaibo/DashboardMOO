@@ -204,10 +204,11 @@ with st.container():
 
         if graph_select=="GP model":
             fig, axs = GP.plot()
-            for i in range(GP.O):
-                axs[i,0].set_ylabel(st.session_state.objective_names[i])
-            for i in range(GP.d):
-                axs[GP.O-1,i].set_xlabel(st.session_state.input_names[i])
+            if GP.O>1 and GP.d>1:
+                for i in range(GP.O):
+                    axs[i,0].set_ylabel(st.session_state.objective_names[i])
+                for i in range(GP.d):
+                    axs[GP.O-1,i].set_xlabel(st.session_state.input_names[i])
 
             c1,c2,c3 = st.columns([1,2*GP.d,1])
 
