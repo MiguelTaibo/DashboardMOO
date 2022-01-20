@@ -195,12 +195,14 @@ with st.container():
 
         c1,_,c2,_ = st.columns([1,1,1,4])
         graph_select = c1.select_slider('', options=["GP model", "Pareto sets"], key="graph selector")
-        c2.download_button(
-            label="Download Paretos CSV",
-            data=GP.dlParetos(st.session_state),
-            file_name=st.session_state.name+'_paretos.csv',
-            mime='text/csv',
-        )
+
+        if GP.O>1:
+            c2.download_button(
+                label="Download Paretos CSV",
+                data=GP.dlParetos(st.session_state),
+                file_name=st.session_state.name+'_paretos.csv',
+                mime='text/csv',
+            )
 
         if graph_select=="GP model":
             fig, axs = GP.plot()

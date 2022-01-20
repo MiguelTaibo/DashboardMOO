@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from MOOEasyTool.models.GaussianProcess import GaussianProcess
 from MOOEasyTool.acquisition_functions.MESMO import mesmo_acq
+from MOOEasyTool.acquisition_functions.PESMO import pesmo_acq
 from MOOEasyTool.acquisition_functions.MES import mes_acq, basic_mes_acq
 import gpflow
 
@@ -12,17 +13,14 @@ from schemas import InputExperiment, OutputExperiment, OutputSamples, Sample
 from dbModels import *
 
 def getAcqfunctions(db: Session):
-    import pdb
-    # pdb.set_trace()
     from MOOEasyTool.acquisition_functions.MES import mes_acq_hp, basic_mes_acq_hp
     from MOOEasyTool.acquisition_functions.MESMO import mesmo_acq_hp
-    # pdb.set_trace()
+    from MOOEasyTool.acquisition_functions.PESMO import pesmo_acq_hp
 
-
-    return {"acqfunctions": [mes_acq_hp, basic_mes_acq_hp, mesmo_acq_hp]}
+    return {"acqfunctions": [mes_acq_hp, basic_mes_acq_hp, mesmo_acq_hp,pesmo_acq_hp]}
 
 def startTest(experiment: InputExperiment, db: Session):
-    if hasattr(experiment,'name') and db.query(Test).filter(Test.name==experiment.name).first() is not None:
+    if hasattr(experiment,'name') and experiment.name is not None and db.query(Test).filter(Test.name==experiment.name).first() is not None:
         raise HTTPException(status_code=404, detail="Experiment with name '"+experiment.name+"' already exits.")
 
     if experiment.n_ins!=len(experiment.input_names):
@@ -205,3 +203,6 @@ def id_to_acqfunct(id):
     if (id==3):
         print("mesmo acq")
         return mesmo_acq
+    if (id==4):
+        print("mesmo acq")
+        return pesmo_acq
