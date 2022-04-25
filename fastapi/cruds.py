@@ -8,6 +8,11 @@ import gpflow
 from fastapi import HTTPException
 import numpy as np
 import os
+from MOOEasyTool.models.GPProblem import GPProblem
+
+from pymoo.core.problem import Problem
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.optimize import minimize
 
 from schemas import InputExperiment, OutputExperiment, OutputSamples, Sample
 from dbModels import *
@@ -106,6 +111,22 @@ def loadTest(name:str, db: Session):
     except:
         next_x = None
 
+    lowerBounds,upperBounds = [],[]
+    for i in inputs_db:
+        lowerBounds.append(i.lowerBound)
+        upperBounds.append(i.upperBound)
+    GP = GaussianProcess(test.n_objs, test.n_cons, test.n_ins, lowerBounds, upperBounds, X = X, Y = Y, noise_variance=2e-6)
+    
+    GP.updateGP()
+    GP.optimizeKernel()
+
+    problem = GPProblem(GP=GP)
+    res = minimize(problem,
+            NSGA2(),
+            save_history=True,
+            verbose=False)
+    
+
     metrics = db.query(Evaluation.ns, Evaluation.adh, Evaluation.agd).filter(Evaluation.test_id==test.id).all()
 
     ns = [m[0] for m in metrics]
@@ -131,7 +152,10 @@ def loadTest(name:str, db: Session):
 
         ns = ns,
         agd = agd,
-        adh = adh
+        adh = adh,
+
+        pareto_front = res.F.tolist(), 
+        pareto_set = res.X.tolist()
     )
 
 def getRandomSample(testid:int,  db: Session):
@@ -208,6 +232,14 @@ def setSample(testid:int,sample: Sample, db: Session):
     GP = GaussianProcess(test.n_objs, test.n_cons, test.n_ins, lowerBounds, upperBounds, X = X, Y = Y, noise_variance=2e-6)
     GP.updateGP()
     GP.optimizeKernel()
+
+    problem = GPProblem(GP=GP)
+    res = minimize(problem,
+            NSGA2(),
+            save_history=True,
+            verbose=False)
+    
+
     adh, agd = GP.evaluateNoRealPareto()
 
     new_evaluation = Evaluation(
@@ -226,8 +258,12 @@ def setSample(testid:int,sample: Sample, db: Session):
     ns = [m[0] for m in metrics]
     adh = [m[1] for m in metrics]
     agd = [m[2] for m in metrics]
-
-    return OutputSamples(X=X.tolist(), Y=Y.tolist(), ns=ns, adh=adh, agd=agd)
+    
+    return OutputSamples(
+        X=X.tolist(), Y=Y.tolist(), 
+        ns=ns, adh=adh, agd=agd, 
+        pareto_front = res.F.tolist(), pareto_set = res.X.tolist()
+    )
 
 ###### Auxiliar functions
 

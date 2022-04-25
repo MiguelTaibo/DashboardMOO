@@ -12,11 +12,6 @@ import gpflow
 import pandas as pd
 import sobol_seq
 
-from pymoo.core.problem import Problem
-from pymoo.algorithms.moo.nsga2 import NSGA2
-from pymoo.optimize import minimize
-
-
 from gpflow.utilities import print_summary
 from frontutils import get_pareto_undominated_by
 
@@ -101,14 +96,9 @@ class frontGP(object):
         return fig, axs
 
     def plotParetos(self, state):
-        problem = GPProblem(self)
-        res = minimize(problem,
-                NSGA2(),
-                save_history=True,
-                verbose=False)
         
-        pareto_front = res.F
-        pareto_set = getSetfromFront(res.X, res.F, pareto_front)
+        pareto_front = np.array(state.pareto_front)
+        pareto_set = np.array(state.pareto_set)
 
         for idx, mm in enumerate(state.objective_mms):
             if mm:
@@ -149,14 +139,9 @@ class frontGP(object):
         return fig
 
     def dlParetos(self, state):
-        problem = GPProblem(self)
-        res = minimize(problem,
-                NSGA2(),
-                save_history=True,
-                verbose=False)
-        
-        pareto_front = res.F
-        pareto_set = res.X
+                
+        pareto_front = np.array(state.pareto_front)
+        pareto_set = np.array(state.pareto_set)
 
         df =pd.DataFrame(data = np.append(pareto_set,pareto_front,axis=1),columns=state.input_names+state.objective_names)
         return df.to_csv()
@@ -214,12 +199,3 @@ def getSetfromFront(xvalues, yvalues, front):
             res = np.append(res,x, axis=0)
 
     return res
-
-class GPProblem(Problem):
-    def __init__(self, GP):
-        super().__init__(n_var=GP.d, n_obj=GP.O, n_constr=GP.C, xl=np.array(GP.lowerBounds), xu=np.array(GP.upperBounds))
-        self.multiGPR = GP.multiGPR
-
-    def _evaluate(self, x, out, *args, **kwargs):
-        mean, _ = self.multiGPR.predict_y(np.array([[x]]))
-        out["F"] = np.column_stack(mean[0])

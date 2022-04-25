@@ -37,6 +37,8 @@ class OutputExperiment(BaseModel):
     adh: Optional[List]
     agd: Optional[List]
     ns: Optional[List]
+    pareto_front: Optional[List]
+    pareto_set: Optional[List]
 
 class Sample(BaseModel):
     x: Optional[List]
@@ -52,3 +54,5 @@ class OutputSamples(BaseModel):
     adh: Optional[List]
     agd: Optional[List]
     ns: Optional[List]
+    pareto_front: Optional[List]
+    pareto_set: Optional[List]

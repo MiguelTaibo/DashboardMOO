@@ -224,6 +224,7 @@ with st.container():
                     axs[st.session_state.GP.O-1,i].set_xlabel(st.session_state.input_names[i])
 
             c1,c2,c3 = st.columns([1,2*st.session_state.GP.d,1])
+            c2.warning("Model shown is an approximation.")
 
             c2.pyplot(fig)
 
@@ -247,7 +248,7 @@ with st.container():
 
         elif graph_select=="Metrics":
 
-            c1,c2,c3 = st.columns([1,2,1])
+            c1,c2,c3 = st.columns([2,2,2])
             
             fig = st.session_state.GP.plotMetrics(st.session_state)
 
