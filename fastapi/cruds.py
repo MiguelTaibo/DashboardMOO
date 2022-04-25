@@ -15,9 +15,9 @@ from dbModels import *
 def getAcqfunctions(db: Session):
     from MOOEasyTool.acquisition_functions.MES import mes_acq_hp, basic_mes_acq_hp
     from MOOEasyTool.acquisition_functions.MESMO import mesmo_acq_hp
-    from MOOEasyTool.acquisition_functions.PESMO import pesmo_acq_hp
+    from MOOEasyTool.acquisition_functions.UseMO import usemo_acq_hp
 
-    return {"acqfunctions": [mes_acq_hp, basic_mes_acq_hp, mesmo_acq_hp,pesmo_acq_hp]}
+    return {"acqfunctions": [mes_acq_hp, basic_mes_acq_hp, mesmo_acq_hp, usemo_acq_hp]}
 
 def startTest(experiment: InputExperiment, db: Session):
     if hasattr(experiment,'name') and experiment.name is not None and db.query(Test).filter(Test.name==experiment.name).first() is not None:
@@ -106,6 +106,12 @@ def loadTest(name:str, db: Session):
     except:
         next_x = None
 
+    metrics = db.query(Evaluation.ns, Evaluation.adh, Evaluation.agd).filter(Evaluation.test_id==test.id).all()
+
+    ns = [m[0] for m in metrics]
+    adh = [m[1] for m in metrics]
+    agd = [m[2] for m in metrics]
+
     return OutputExperiment(
         id = test.id,
         name = name,
@@ -121,7 +127,11 @@ def loadTest(name:str, db: Session):
         acqfunct_hps = acqfunct_hps,
         X = None if X is None else X.tolist(),
         Y = None if Y is None else Y.tolist(),
-        next_x = None if next_x is None else next_x.tolist()
+        next_x = None if next_x is None else next_x.tolist(),
+
+        ns = ns,
+        agd = agd,
+        adh = adh
     )
 
 def getRandomSample(testid:int,  db: Session):
@@ -155,10 +165,8 @@ def getNextSample(testid:int,  db: Session):
         if (o.maximize):
             Y[:,idx] = - Y[:,idx]
 
-    ## Todo implement kernel options and hyperparameters
-    kernel = gpflow.kernels.SquaredExponential()
-    GP = GaussianProcess(test.n_objs, test.n_cons, test.n_ins, lowerBounds, upperBounds, kernel, X = X, Y = Y, noise_variance=2e-6)
-    GP.updateGPR()
+    GP = GaussianProcess(test.n_objs, test.n_cons, test.n_ins, lowerBounds, upperBounds, X = X, Y = Y, noise_variance=2e-6)
+    GP.updateGP()
     GP.optimizeKernel()
 
     x_best, _ = id_to_acqfunct(test.acq_id)(GP, N=test.acq_N, M=test.acq_M)
@@ -170,6 +178,14 @@ def getNextSample(testid:int,  db: Session):
 
 def setSample(testid:int,sample: Sample, db: Session):
     
+    test = db.query(Test).filter(Test.id==testid).first()
+    
+    inputs = db.query(Input).filter(Input.test_id==test.id).all()
+    lowerBounds,upperBounds = [],[]
+    for i in inputs:
+        lowerBounds.append(i.lowerBound)
+        upperBounds.append(i.upperBound)
+
     try:
         X = np.load("experiments/"+str(testid)+"X.npy")
         X = np.append(X, np.array([sample.x]), axis=0)
@@ -188,8 +204,30 @@ def setSample(testid:int,sample: Sample, db: Session):
         os.remove("experiments/"+str(testid)+"Xnext.npy")
     except:
         pass
-    return OutputSamples(X=X.tolist(), Y=Y.tolist())
     
+    GP = GaussianProcess(test.n_objs, test.n_cons, test.n_ins, lowerBounds, upperBounds, X = X, Y = Y, noise_variance=2e-6)
+    GP.updateGP()
+    GP.optimizeKernel()
+    adh, agd = GP.evaluateNoRealPareto()
+
+    new_evaluation = Evaluation(
+        test_id = test.id,
+        ns = GP.X.shape[0],
+        agd = agd,
+        adh = adh
+    )
+
+    db.add(new_evaluation)
+    db.commit()
+    db.refresh(new_evaluation)
+
+    metrics = db.query(Evaluation.ns, Evaluation.adh, Evaluation.agd).filter(Evaluation.test_id==test.id).all()
+
+    ns = [m[0] for m in metrics]
+    adh = [m[1] for m in metrics]
+    agd = [m[2] for m in metrics]
+
+    return OutputSamples(X=X.tolist(), Y=Y.tolist(), ns=ns, adh=adh, agd=agd)
 
 ###### Auxiliar functions
 

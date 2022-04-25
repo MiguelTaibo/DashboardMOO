@@ -34,6 +34,9 @@ class OutputExperiment(BaseModel):
     X: Optional[List]
     Y: Optional[List]
     next_x: Optional[List]
+    adh: Optional[List]
+    agd: Optional[List]
+    ns: Optional[List]
 
 class Sample(BaseModel):
     x: Optional[List]
@@ -46,3 +49,6 @@ class XSample(BaseModel):
 class OutputSamples(BaseModel):
     X: Optional[List]
     Y: Optional[List]
+    adh: Optional[List]
+    agd: Optional[List]
+    ns: Optional[List]

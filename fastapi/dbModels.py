@@ -28,3 +28,12 @@ class Output(Base):
     name = Column(String(20))
     maximize = Column(Boolean)
     test_id = Column(Integer, ForeignKey("tests.id"))
+
+class Evaluation(Base):
+    __tablename__ = "evaluations"
+    id = Column(Integer, primary_key=True, index=True)
+    test_id = Column(Integer, ForeignKey("tests.id"))
+    ns = Column(Integer)
+    adh = Column(Float)
+    agd = Column(Float)
+

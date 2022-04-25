@@ -80,7 +80,7 @@ with st.container():
             st.session_state.input_mms[i][1] = expander.number_input("Upper Bound " + str(i+1), value=1., format="%f")
             
 
-        st.session_state.n_objs = c2.number_input("N objectives", min_value=1, step=1,  format="%d", help="number of objectives to maximize")
+        st.session_state.n_objs = c2.number_input("N objectives", min_value=2, step=1,  format="%d", help="number of objectives to maximize")
         expander = c2.expander("Output variables")
 
         if 'objective_names' not in st.session_state or len(st.session_state.objective_names)!=st.session_state.n_objs:
@@ -90,7 +90,7 @@ with st.container():
 
         for i in range(st.session_state.n_objs):
             st.session_state.objective_names[i] = expander.text_input("Name objective " + str(i+1), value="objective "+str(i+1))
-            st.session_state.objective_mms[i] = expander.select_slider("Objective "+ str(i+1),options=['Minimize','Maximize'])
+            st.session_state.objective_mms[i] = 'Minimize' #expander.select_slider("Objective "+ str(i+1),options=['Minimize','Maximize'])
 
         st.session_state.n_cons = c3.number_input("N constrains", min_value= 0, step = 1, format="%d", help="number of constrains")
 
@@ -103,7 +103,10 @@ with st.container():
             st.session_state.acqfunct_hps = dict()
         if not st.session_state.acqfunctions==[]:
             for hp in filterdict(st.session_state.acqfunctions,"name",st.session_state.acqfunct)[0]['hps']:
-                st.session_state.acqfunct_hps[hp['name']] = expander.number_input(hp['name'], value=hp['default'], help=hp['help'], format=hp['type'], min_value=0)
+                if hp['type']=="%o":
+                    st.session_state.acqfunct_hps[hp['name']] = expander.selectbox(hp['name'], hp['options'], help=hp['help'])
+                else:
+                    st.session_state.acqfunct_hps[hp['name']] = expander.number_input(hp['name'], value=hp['default'], help=hp['help'], format=hp['type'], min_value=0)
     else:
         c1.markdown(disableWidget("N inputs",st.session_state.n_ins), unsafe_allow_html=True)
         expander = c1.expander("Input variables")
@@ -130,9 +133,9 @@ with st.container():
     st.session_state.kernel = c4.selectbox("Kernel", 
                     np.array(["RBF"]),
                     help="kernel defined to use in the GP model \n not implemented yet")
-    expander = c4.expander("Kernel hyperparameters")
-    for hp in k_hps:
-        expander.number_input(hp, min_value=0.01, step=0.01)
+    # expander = c4.expander("Kernel hyperparameters")
+    # for hp in k_hps:
+    #     expander.number_input(hp, min_value=0.01, step=0.01)
 
 ### Output section
 with st.container():
@@ -179,55 +182,73 @@ with st.container():
     if st.session_state.X is None or st.session_state.X == []:
         st.subheader("Get at least one sample to visualize graphs")
     else:
-        kernel = gpflow.kernels.SquaredExponential()
-        GP = frontGP(
-            st.session_state.n_objs,
-            st.session_state.n_cons,
-            st.session_state.n_ins,
-            np.array(st.session_state.input_mms)[:,0],
-            np.array(st.session_state.input_mms)[:,1],
-            kernel = kernel,
-            X = np.array(st.session_state.X),
-            Y = np.array(st.session_state.Y))
-        GP.updateGPR()
-        GP.optimizeKernel()
-        
-
-        c1,_,c2,_ = st.columns([1,1,1,4])
-        graph_select = c1.select_slider('', options=["GP model", "Pareto sets"], key="graph selector")
-
-        if GP.O>1:
-            c2.download_button(
-                label="Download Paretos CSV",
-                data=GP.dlParetos(st.session_state),
-                file_name=st.session_state.name+'_paretos.csv',
-                mime='text/csv',
+        if 'GP' not in st.session_state:
+            st.session_state.GP = frontGP(
+                st.session_state.n_objs,
+                st.session_state.n_cons,
+                st.session_state.n_ins,
+                np.array(st.session_state.input_mms)[:,0],
+                np.array(st.session_state.input_mms)[:,1],
+                X = np.array(st.session_state.X),
+                Y = np.array(st.session_state.Y)
             )
+            st.session_state.GP.updateGP()
+            st.session_state.GP.optimizeKernel()
+        elif np.any(st.session_state.GP.X!=st.session_state.X) or np.any(st.session_state.GP.Y!=st.session_state.Y):
+            print("updated")
+            st.session_state.GP.X = np.array(st.session_state.X)
+            st.session_state.GP.Y = np.array(st.session_state.Y)
+            st.session_state.GP.updateGP()
+            st.session_state.GP.optimizeKernel()
+        
+        c1,_,c2,_ = st.columns([1,1,1,4])
+        graph_select = c2.select_slider('Select Graph', options=["GP model", "Pareto objects", "Metrics"], key="graph selector")
+
+        pareto_select = c1.select_slider('Select Downloaded Pareto', options=["Estimated", "Best Known"])
+
+        file_name = ("estimated_paretos.csv"  if pareto_select=="Estimated" else "best_known_paretos.csv")
+        
+        c1.download_button(
+            label="Download Paretos CSV",
+            data=st.session_state.GP.dlParetos(st.session_state) if pareto_select=="Estimated" else st.session_state.GP.dlParetoBestKnown(st.session_state),
+            file_name=st.session_state.name+"_"+file_name if st.session_state.name is not None else 'untitled_'+file_name,
+            mime='text/csv',
+        )
 
         if graph_select=="GP model":
-            fig, axs = GP.plot()
-            if GP.O>1 and GP.d>1:
-                for i in range(GP.O):
+            fig, axs = st.session_state.GP.plot()
+            if st.session_state.GP.O>1 and st.session_state.GP.d>1:
+                for i in range(st.session_state.GP.O):
                     axs[i,0].set_ylabel(st.session_state.objective_names[i])
-                for i in range(GP.d):
-                    axs[GP.O-1,i].set_xlabel(st.session_state.input_names[i])
+                for i in range(st.session_state.GP.d):
+                    axs[st.session_state.GP.O-1,i].set_xlabel(st.session_state.input_names[i])
 
-            c1,c2,c3 = st.columns([1,2*GP.d,1])
+            c1,c2,c3 = st.columns([1,2*st.session_state.GP.d,1])
 
             c2.pyplot(fig)
-        elif graph_select=="Pareto sets":
+
+        elif graph_select=="Pareto objects":
 
             c1,c2,c3,c4,c5 = st.columns([2,3,2,3,2])
             
             c2.header("Pareto Set")
+            if st.session_state.GP.d>1:
+                c2.selectbox("X axis", options = st.session_state.input_names, index=0, key="setx")
+                c2.selectbox("Y axis", options = st.session_state.input_names, index=1, key="sety")
+            
             c4.header("Pareto Front")
             c4.selectbox("X axis", options = st.session_state.objective_names, index=0, key="frontx")
             c4.selectbox("Y axis", options = st.session_state.objective_names, index=1, key = "fronty")
-            c2.selectbox("X axis", options = st.session_state.input_names, index=0, key="setx")
-            c2.selectbox("Y axis", options = st.session_state.input_names, index=1, key="sety")
             
-
-            fig1, fig2 = GP.plotParetos(st.session_state)
+            fig1, fig2 = st.session_state.GP.plotParetos(st.session_state)
             c1,c2,c3,c4 = st.columns([2,4,4,2])
             c2.pyplot(fig1)
             c3.pyplot(fig2)
+
+        elif graph_select=="Metrics":
+
+            c1,c2,c3 = st.columns([1,2,1])
+            
+            fig = st.session_state.GP.plotMetrics(st.session_state)
+
+            c2.pyplot(fig)

@@ -33,11 +33,6 @@ def get_url():
     host = os.getenv("SQL_HOST", "db")
     database_name = os.getenv("SQL_DATABASE", "MOOdb")
 
-    # user_name = "thewiseseeker"
-    # password = "fyqxM26IIyhdqlaB"
-    # host = "127.0.0.1:3307"
-    # database_name = "master"
-
     return 'mysql://%s:%s@%s/%s' % (
         user_name,
         password,
