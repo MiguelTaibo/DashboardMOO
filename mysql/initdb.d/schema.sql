@@ -36,3 +36,17 @@ CREATE TABLE `outputs` (
   KEY `ix_outputs_id` (`id`),
   CONSTRAINT `outputs_ibfk_1` FOREIGN KEY (`test_id`) REFERENCES `tests` (`id`)
 );
+
+CREATE TABLE `MOOdb`.`evaluations` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `test_id` INT(11) NOT NULL,
+  `ns` INT(11) NULL,
+  `adh` FLOAT NULL,
+  `agd` FLOAT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `fk_evaluations_1_idx` (`test_id` ASC),
+  CONSTRAINT `fk_evaluations_1`
+    FOREIGN KEY (`test_id`)
+    REFERENCES `MOOdb`.`tests` (`id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION);
